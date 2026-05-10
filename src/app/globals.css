@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 262 80% 50%;
+    --primary: 262 80% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 6% 10%;
+    --radius: 0.9rem;
+  }
+
+  .dark {
+    --background: 240 12% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+    --border: 240 6% 13%;
+    --input: 240 6% 13%;
+    --ring: 262 80% 58%;
+    --primary: 262 80% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 12%;
+    --muted-foreground: 240 5% 55%;
+    --accent: 240 4% 12%;
+    --accent-foreground: 0 0% 98%;
+  }
+
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top, rgba(124, 58, 237, 0.08), transparent 30%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent 36%);
+  }
+
+  .dark body {
+    background:
+      radial-gradient(circle at top, rgba(124, 58, 237, 0.18), transparent 32%),
+      linear-gradient(180deg, rgba(2, 6, 23, 0.45), transparent 36%);
+  }
+}
+
+@layer components {
+  .container-shell {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .glass-panel {
+    @apply rounded-[2rem] border border-white/40 bg-white/80 shadow-soft backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/80;
+  }
+
+  .surface-panel {
+    @apply rounded-[1.75rem] border border-slate-200/80 bg-white/90 shadow-soft backdrop-blur dark:border-slate-800 dark:bg-slate-950/80;
+  }
+
+  .section-heading {
+    @apply text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50 sm:text-2xl;
+  }
+
+  .section-subtitle {
+    @apply mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400;
+  }
+
+  .card-hover {
+    @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-medium;
+  }
+
+  .upload-zone {
+    @apply rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 px-6 py-8 text-center transition hover:border-violet-400 hover:bg-violet-50/70 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-violet-500 dark:hover:bg-slate-900;
+  }
+
+  .progress-bar {
+    @apply h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800;
+  }
+
+  .progress-fill {
+    @apply h-full rounded-full bg-slate-950 transition-all duration-300 dark:bg-white;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-violet-500 via-fuchsia-500 to-indigo-500 bg-clip-text text-transparent;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-slate-300 dark:bg-slate-700;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-600;
+}
+
+::selection {
+  @apply bg-violet-500/20 text-slate-950 dark:text-slate-50;
+}
