@@ -37,8 +37,8 @@ function makeKeywords(tool: ToolSeed) {
     `privacy-safe ${tool.title.toLowerCase()}`,
     `${slugToLabel(tool.category).toLowerCase()} tools`,
   ];
-  if (tool.featureFlags.includes("premium")) base.push("advanced features", "batch processing");
-  if (tool.featureFlags.includes("ai-assisted")) base.push("ai assisted");
+  if (tool.featureFlags.includes("ai-assisted")) base.push("assisted workflow");
+  if (tool.featureFlags.includes("batch-ready")) base.push("batch workflow");
   return Array.from(new Set(base));
 }
 
@@ -50,7 +50,7 @@ function makeFaq(tool: ToolSeed): ToolFaqItem[] {
     },
     {
       question: `Is ${tool.title} free to use?`,
-      answer: "Yes. Core actions are free, and some tools can still expose advanced limits or batch workflows where relevant.",
+      answer: "Yes. Core actions are free and the workflow is designed to stay focused and privacy-friendly.",
     },
     {
       question: `Does OmniTools keep my files private?`,

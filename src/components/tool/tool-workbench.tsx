@@ -1,568 +1,305 @@
 "use client";
 
-import { ToolPreviewWorkspace } from "@/components/tool/tool-preview-workspace";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ToolUploadPanel } from "@/components/tool-upload-panel";
+import { ToolPreviewWorkspace } from "@/components/tool/tool-preview-workspace";
 import { ToolOutputPanel } from "@/components/tool-output-panel";
 import { useRecentTools } from "@/hooks/use-recent-tools";
 import type { ProcessorResult } from "@/lib/processors";
-import {
-  runToolEngine,
-  type ProcessorProgress,
-} from "@/lib/processors/engine";
+import { runToolEngine, type ProcessorProgress } from "@/lib/processors/engine";
 import type { ToolEntry } from "@/lib/tools/types";
-import {
-  getToolUiConfig,
-  type ToolControlConfig,
-} from "@/lib/tools/ui/tool-ui-config";
-import { Badge } from "@/components/ui/badge";
-import {
-  Loader2,
-  Save,
-  Sparkles,
-} from "lucide-react";
+import { getToolUiConfig, type ToolControlConfig } from "@/lib/tools/ui/tool-ui-config";
+import { Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  ReactCompareSlider,
-  ReactCompareSliderImage,
-} from "react-compare-slider";
+type PreviewFile = {
+  id: string;
+  file: File;
+  url: string;
+};
 
+function makePreviewFiles(files: File[]): PreviewFile[] {
+  return files.map((file, index) => ({
+    id: `${file.name}-${file.size}-${index}-${Date.now()}`,
+    file,
+    url: URL.createObjectURL(file),
+  }));
+}
 
-
-export function ToolWorkbench({
-  tool,
-}: {
-  tool: ToolEntry;
-}) {
+export function ToolWorkbench({ tool }: { tool: ToolEntry }) {
   const { addRecent } = useRecentTools();
+  const ui = useMemo(() => getToolUiConfig(tool), [tool.slug]);
 
-  const ui = useMemo(
-    () => getToolUiConfig(tool),
-    [tool.slug]
-  );
-
-  const [values, setValues] = useState<
-    Record<string, string>
-  >({});
-
-  const [file, setFile] =
-    useState<File | null>(null);
-
-  const [files, setFiles] = useState<File[]>(
-    []
-  );
-
-  const [previewFiles, setPreviewFiles] =
-    useState<
-      {
-        id: string;
-        file: File;
-        url: string;
-      }[]
-    >([]);
-
-  const [selectedPages, setSelectedPages] =
-    useState<number[]>([]);
-
-  const [zoom, setZoom] = useState(100);
-
-  const [state, setState] = useState<
-    "idle" | "loading" | "done" | "error"
-  >("idle");
-
-  const [progress, setProgress] =
-    useState<ProcessorProgress | null>(
-      null
-    );
-
-  const [result, setResult] =
-    useState<ProcessorResult | null>(
-      null
-    );
-
-  const [error, setError] =
-    useState("");
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([]);
+  const [activePreviewId, setActivePreviewId] = useState<string | null>(null);
+  const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [progress, setProgress] = useState<ProcessorProgress | null>(null);
+  const [result, setResult] = useState<ProcessorResult | null>(null);
+  const [error, setError] = useState("");
+  const previewFilesRef = useRef<PreviewFile[]>([]);
 
   useEffect(() => {
-    if (tool?.slug) {
-      addRecent(tool.slug);
-    }
+    previewFilesRef.current = previewFiles;
+  }, [previewFiles]);
 
-    previewFiles.forEach((item) => {
-      URL.revokeObjectURL(item.url);
-    });
+  useEffect(() => {
+    return () => {
+      previewFilesRef.current.forEach((item) => URL.revokeObjectURL(item.url));
+    };
+  }, []);
+
+  useEffect(() => {
+    if (tool?.slug) addRecent(tool.slug);
 
     setValues({});
     setFile(null);
     setFiles([]);
+    setState("idle");
     setProgress(null);
     setResult(null);
     setError("");
-    setState("idle");
+    setActivePreviewId(null);
 
-    setSelectedPages([]);
-    setZoom(100);
+    setPreviewFiles((prev) => {
+      prev.forEach((item) => URL.revokeObjectURL(item.url));
+      return [];
+    });
   }, [tool.slug, addRecent]);
 
-  const setField = (
-    key: string,
-    nextValue: string
-  ) => {
-    setValues((prev) => ({
-      ...prev,
-      [key]: nextValue,
-    }));
+  const setField = (key: string, nextValue: string) => {
+    setValues((prev) => ({ ...prev, [key]: nextValue }));
   };
 
-  const download = () => {
-    if (!result?.file) return;
-
-    const url = URL.createObjectURL(
-      result.file.blob
-    );
-
-    const a =
-      document.createElement("a");
-
-    a.href = url;
-    a.download = result.file.name;
-    a.click();
-    toast.success("Download started");
-
-    URL.revokeObjectURL(url);
+  const loadFiles = (list: File[]) => {
+    const preview = makePreviewFiles(list);
+    setPreviewFiles((prev) => {
+      prev.forEach((item) => URL.revokeObjectURL(item.url));
+      return preview;
+    });
+    setFiles(list);
+    setFile(list[0] ?? null);
+    setActivePreviewId(preview[0]?.id ?? null);
+    setResult(null);
+    setError("");
   };
 
-  const onRun = async () => {
+  const onRemovePreview = (id: string) => {
+    setPreviewFiles((prev) => {
+      const next = prev.filter((item) => item.id !== id);
+      const removed = prev.find((item) => item.id === id);
+      if (removed) URL.revokeObjectURL(removed.url);
+      setFiles(next.map((item) => item.file));
+      setFile(next[0]?.file ?? null);
+      if (activePreviewId === id) setActivePreviewId(next[0]?.id ?? null);
+      return next;
+    });
+  };
+
+  const onMovePreview = (id: string, direction: -1 | 1) => {
+    setPreviewFiles((prev) => {
+      const index = prev.findIndex((item) => item.id === id);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      setFiles(next.map((item) => item.file));
+      setFile(next[0]?.file ?? null);
+      return next;
+    });
+  };
+
+  const run = async () => {
     try {
-      if (
-        ui.requiresFile &&
-        !file &&
-        files.length === 0
-      ) {
-        setError(
-          "Please provide the required input."
-        );
-
+      if (ui.requiresFile && !file && files.length === 0) {
+        setError("Please upload a file to continue.");
         return;
       }
 
       setState("loading");
-
       setError("");
-
-      setProgress({
-        stage: "validating",
-        progress: 0,
-      });
+      setProgress({ stage: "validating", progress: 0 });
 
       const data = await runToolEngine(
         tool,
         {
           ...values,
-
-          input:
-            values.input ?? "",
-
-          secondary:
-            values.secondary ?? "",
-
-          password:
-            values.password ?? "",
-
-          pages: selectedPages,
-
-          zoom,
-
+          input: values.input ?? "",
+          secondary: values.secondary ?? "",
+          password: values.password ?? "",
           file,
-
           files,
-
-          fileName:
-            values.fileName ?? "",
+          fileName: values.fileName ?? "",
+          toolSlug: tool.slug,
+          toolTitle: tool.title,
+          toolCategory: tool.category,
         },
         {
-          onProgress: (p) =>
-            setProgress(p),
-        }
+          onProgress: (p) => setProgress(p),
+        },
       );
 
-        setResult(data);
-
-        setState("done");
-
-        toast.success("Processing complete");
+      setResult(data);
+      setState("done");
+      toast.success("Processing complete");
     } catch (err) {
       setState("error");
-
       setProgress(null);
-
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Something went wrong";
-
+      const message = err instanceof Error ? err.message : "Something went wrong";
       setError(message);
-
       toast.error(message);
     }
   };
 
-  const renderControl = (
-    control: ToolControlConfig
-  ) => {
-    const commonProps = {
-      value:
-        values[control.key] ?? "",
-
-      onChange: (value: string) =>
-        setField(control.key, value),
-    };
+  const renderControl = (control: ToolControlConfig) => {
+    const commonValue = values[control.key] ?? "";
 
     if (control.kind === "textarea") {
       return (
-        <div
-          key={control.key}
-          className="space-y-2"
-        >
-          <label className="text-sm font-medium text-slate-900 dark:text-slate-100">
-            {control.label}
-          </label>
-
+        <div key={control.key} className="space-y-2">
+          <label className="text-sm font-medium text-slate-950 dark:text-slate-50">{control.label}</label>
           <Textarea
-            value={commonProps.value}
-            onChange={(e) =>
-              commonProps.onChange(
-                e.target.value
-              )
-            }
-            placeholder={
-              control.placeholder
-            }
+            value={commonValue}
+            onChange={(e) => setField(control.key, e.target.value)}
+            placeholder={control.placeholder}
             rows={control.rows}
           />
-
-          {control.helperText ? (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {control.helperText}
-            </p>
-          ) : null}
+          {control.helperText ? <p className="text-xs text-slate-500 dark:text-slate-400">{control.helperText}</p> : null}
         </div>
       );
     }
 
     if (control.kind === "select") {
       return (
-        <div
-          key={control.key}
-          className="space-y-2"
-        >
-          <label className="text-sm font-medium text-slate-900 dark:text-slate-100">
-            {control.label}
-          </label>
-
+        <div key={control.key} className="space-y-2">
+          <label className="text-sm font-medium text-slate-950 dark:text-slate-50">{control.label}</label>
           <select
-            value={commonProps.value}
-            onChange={(e) =>
-              commonProps.onChange(
-                e.target.value
-              )
-            }
-            className="flex h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-soft outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring dark:border-slate-800 dark:bg-slate-950"
+            value={commonValue}
+            onChange={(e) => setField(control.key, e.target.value)}
+            className="flex h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-slate-400 dark:border-slate-800 dark:bg-slate-950"
           >
-            <option value="">
-              Select an option
-            </option>
-
-            {control.options?.map(
-              (option) => (
-                <option
-                  key={option.value}
-                  value={option.value}
-                >
-                  {option.label}
-                </option>
-              )
-            )}
+            <option value="">Select an option</option>
+            {control.options?.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
-
-          {control.helperText ? (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {control.helperText}
-            </p>
-          ) : null}
+          {control.helperText ? <p className="text-xs text-slate-500 dark:text-slate-400">{control.helperText}</p> : null}
         </div>
       );
     }
 
     return (
-      <div
-        key={control.key}
-        className="space-y-2"
-      >
-        <label className="text-sm font-medium text-slate-900 dark:text-slate-100">
-          {control.label}
-        </label>
-
+      <div key={control.key} className="space-y-2">
+        <label className="text-sm font-medium text-slate-950 dark:text-slate-50">{control.label}</label>
         <Input
-          type={
-            control.type ?? "text"
-          }
-          value={commonProps.value}
-          onChange={(e) =>
-            commonProps.onChange(
-              e.target.value
-            )
-          }
-          placeholder={
-            control.placeholder
-          }
+          type={control.type ?? "text"}
+          value={commonValue}
+          onChange={(e) => setField(control.key, e.target.value)}
+          placeholder={control.placeholder}
         />
-
-        {control.helperText ? (
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {control.helperText}
-          </p>
-        ) : null}
+        {control.helperText ? <p className="text-xs text-slate-500 dark:text-slate-400">{control.helperText}</p> : null}
       </div>
     );
   };
 
+  const canUpload = ui.requiresFile || ui.multipleFiles || ui.accepts;
+
   return (
-    <div className="space-y-6">
-      <Card className="border border-slate-200/80 bg-white/90 shadow-soft backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-        <CardHeader className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              {tool.processingType}
-            </Badge>
-
-            <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              {tool.inputType} input
-            </Badge>
-
-            <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              {tool.outputType} output
-            </Badge>
-          </div>
-
-          <div className="space-y-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Sparkles className="h-4 w-4" />
+    <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+      <div className="space-y-6">
+        <Card className="overflow-hidden border border-slate-200/80 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-950">
+          <CardHeader className="space-y-3">
+            <CardTitle className="text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-50">
               Tool workspace
             </CardTitle>
+            <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">{ui.hint}</p>
+          </CardHeader>
 
-            <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
-              {ui.hint}
-            </p>
-          </div>
-        </CardHeader>
+          <CardContent className="space-y-5">
+            {canUpload ? (
+              <ToolUploadPanel
+                title={ui.multipleFiles ? "Upload files" : "Upload file"}
+                accept={ui.accepts}
+                multiple={ui.multipleFiles}
+                onFiles={loadFiles}
+              />
+            ) : null}
 
-        <CardContent className="space-y-6">
-          {ui.requiresFile ? (
-            <ToolUploadPanel
-              title="Upload file"
-              accept={ui.accepts}
-              multiple={
-                ui.multipleFiles
-              }
-              onFiles={(list) => {
-                setFiles(list);
+            {previewFiles.length ? (
+              <ToolPreviewWorkspace
+                files={previewFiles}
+                activeId={activePreviewId ?? previewFiles[0]?.id ?? null}
+                onActiveChange={setActivePreviewId}
+                onRemove={onRemovePreview}
+                onMove={onMovePreview}
+              />
+            ) : null}
 
-                if (list.length > 0) {
-                  setFile(list[0]);
-                } else {
-                  setFile(null);
-                }
-
-                setResult(null);
-
-                setError("");
-
-                const mapped =
-                  list.map(
-                    (f, index) => ({
-                      id: `${f.name}-${index}-${Date.now()}`,
-                      file: f,
-                      url:
-                        URL.createObjectURL(
-                          f
-                        ),
-                    })
-                  );
-
-                setPreviewFiles(
-                  (prev) => {
-                    prev.forEach(
-                      (item) => {
-                        URL.revokeObjectURL(
-                          item.url
-                        );
-                      }
-                    );
-
-                    return mapped;
-                  }
-                );
-              }}
-            />
-          ) : null}
-
-          {previewFiles.length ? (
-            <ToolPreviewWorkspace
-              files={previewFiles}
-              result={result}
-              onRemove={(id) => {
-                const next = previewFiles.filter(
-                  (item) => item.id !== id
-                );
-
-                previewFiles.forEach((item) => {
-                  if (item.id === id) {
-                    URL.revokeObjectURL(item.url);
-                  }
-                });
-
-                setPreviewFiles(next);
-                setFiles(next.map((x) => x.file));
-                setFile(next[0]?.file ?? null);
-              }}
-            />
-          ) : null}
-
-          {progress ? (
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-950">
-              <div className="min-w-28 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {progress.stage}
+            {ui.controls.length ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {ui.controls.map(renderControl)}
               </div>
+            ) : null}
 
-              <div className="progress-bar flex-1">
-                <div
-                  className="progress-fill"
-                  style={{
-                    width: `${Math.round(
-                      progress.progress *
-                        100
-                    )}%`,
-                  }}
-                />
-              </div>
-
-              <div className="text-xs tabular-nums text-slate-600 dark:text-slate-300">
-                {Math.round(
-                  progress.progress *
-                    100
-                )}
-                %
-              </div>
-            </div>
-          ) : null}
-
-          {files.length > 1 ? (
-            <div className="rounded-3xl border border-slate-200/80 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="mb-3 text-sm font-semibold">
-                Selected files
-              </div>
-
-              <div className="space-y-2">
-                {files.map(
-                  (f, index) => (
-                    <div
-                      key={`${f.name}-${index}`}
-                      className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-950"
-                    >
-                      <div className="truncate text-sm">
-                        {index + 1}.{" "}
-                        {f.name}
-                      </div>
-
-                      <div className="text-xs text-slate-500">
-                        {(
-                          f.size /
-                          1024 /
-                          1024
-                        ).toFixed(2)}{" "}
-                        MB
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {ui.controls.map(
-              (control) =>
-                renderControl(
-                  control
-                )
-            )}
-          </div>
-
-          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-            <Button
-              onClick={onRun}
-              disabled={
-                state === "loading"
-              }
-              className="rounded-2xl"
-            >
-              {state ===
-              "loading" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : null}
-
-              {ui.submitLabel}
-            </Button>
-
-            {result?.file ? (
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button onClick={run} disabled={state === "loading"} className="rounded-2xl">
+                {state === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {ui.submitLabel}
+              </Button>
               <Button
+                type="button"
                 variant="outline"
-                onClick={download}
+                onClick={() => {
+                  setValues({});
+                  setResult(null);
+                  setError("");
+                  setProgress(null);
+                }}
                 className="rounded-2xl"
               >
-                <Save className="h-4 w-4" />
-                Download result
+                <RotateCcw className="h-4 w-4" />
+                Reset
               </Button>
+            </div>
+
+            {progress ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/60">
+                <div className="mb-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <span>{progress.stage}</span>
+                  <span>{Math.round(progress.progress * 100)}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                  <div className="h-full rounded-full bg-slate-950 dark:bg-white" style={{ width: `${Math.round(progress.progress * 100)}%` }} />
+                </div>
+              </div>
             ) : null}
-          </div>
 
-        </CardContent>
-      </Card>
-
-      {state === "error" ? (
-        <Card className="border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/30">
-          <CardContent className="py-4 text-sm text-rose-900 dark:text-rose-200">
-            {error}
+            {error ? <p className="text-sm text-red-600 dark:text-red-300">{error}</p> : null}
           </CardContent>
         </Card>
-      ) : null}
+      </div>
 
-      <ToolOutputPanel
-        result={result}
-        originalFile={file}
-        zoom={zoom}
-      />
+      <div className="space-y-6">
+        <ToolOutputPanel result={result} originalFile={file} zoom={100} />
 
-      {!result ? (
-        <Card className="border border-slate-200/80 bg-white/90 shadow-soft dark:border-slate-800 dark:bg-slate-950/80">
-          <CardContent className="py-6 text-sm text-slate-600 dark:text-slate-400">
-            Use the tool controls
-            above to generate a
-            result.
-          </CardContent>
-        </Card>
-      ) : null}
+        {!result ? (
+          <Card className="border border-slate-200/80 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-950">
+            <CardContent className="py-8 text-sm leading-6 text-slate-600 dark:text-slate-400">
+              Run the tool to generate a preview and downloadable result.
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {state === "done" ? null : null}
+      </div>
     </div>
   );
 }
