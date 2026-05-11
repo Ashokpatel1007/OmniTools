@@ -55,7 +55,7 @@ export const processorRegistry: Record<string, ProcessorHandler> = {
     if (!file) return resultText("Image Upscaler", "Upload an image first.");
     const scale = Math.max(1, Number(args.scale) || 2);
 
-    const blob = await transformCanvas(file, (ctx, canvas, bitmap) => {
+    const blob = await transformCanvas(file, (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, bitmap: ImageBitmap, ) => {
       canvas.width = bitmap.width * scale;
       canvas.height = bitmap.height * scale;
       ctx.imageSmoothingEnabled = true;
@@ -107,7 +107,7 @@ export const processorRegistry: Record<string, ProcessorHandler> = {
     if (!file) return resultText("Flip Image", "Upload an image first.");
     const direction = String(args.direction || "horizontal");
 
-    const blob = await transformCanvas(file, (ctx, canvas, bitmap) => {
+    const blob = await transformCanvas(file, (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, bitmap: ImageBitmap, ) => {
       if (direction === "vertical") {
         ctx.translate(0, canvas.height);
         ctx.scale(1, -1);
@@ -129,7 +129,7 @@ export const processorRegistry: Record<string, ProcessorHandler> = {
     const [w, h] = ratio.split(":").map(Number);
     const target = w && h ? w / h : 1;
 
-    const blob = await transformCanvas(file, (ctx, canvas, bitmap) => {
+    const blob = await transformCanvas(file, (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, bitmap: ImageBitmap, ) => {
       const sourceRatio = bitmap.width / bitmap.height;
       let sx = 0,
         sy = 0,

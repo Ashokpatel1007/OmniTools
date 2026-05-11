@@ -163,3 +163,9 @@ export async function processPdf(key: string, args: any): Promise<ProcessorResul
   }
 }
 
+export async function handlePdfTool(
+  key: string,
+  args: any,
+) {
+  return await processPdf(key, args);
+}

@@ -1,0 +1,19 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/about/page": "app/about/page.js",
+  "/categories/page": "app/categories/page.js",
+  "/contact/page": "app/contact/page.js",
+  "/donate/page": "app/donate/page.js",
+  "/favorites/page": "app/favorites/page.js",
+  "/manifest.webmanifest/route": "app/manifest.webmanifest/route.js",
+  "/page": "app/page.js",
+  "/premium/page": "app/premium/page.js",
+  "/privacy/page": "app/privacy/page.js",
+  "/recent/page": "app/recent/page.js",
+  "/robots.txt/route": "app/robots.txt/route.js",
+  "/terms/page": "app/terms/page.js",
+  "/sitemap.xml/route": "app/sitemap.xml/route.js",
+  "/[category]/[tool]/page": "app/[category]/[tool]/page.js",
+  "/search/page": "app/search/page.js",
+  "/[category]/page": "app/[category]/page.js"
+}

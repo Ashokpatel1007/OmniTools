@@ -73,7 +73,13 @@ export async function backgroundRemoveImage(
       // If luminance is above threshold => background => alpha goes to 0.
       // Below threshold => subject => alpha stays 1.
       const t = (lum - threshold) / softness;
-      const alpha = 1 - clamp01(t);
+      let alpha = 1 - clamp01(t);
+
+      // soften edges
+      alpha = Math.pow(alpha, 1.35);
+
+      // remove tiny edge noise
+      if (alpha < 0.08) alpha = 0;
 
       data[i + 3] = Math.round(alpha * 255);
     }

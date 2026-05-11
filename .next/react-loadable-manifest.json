@@ -1,0 +1,26 @@
+{
+  "lib\\processors\\shared.ts -> @ffmpeg/ffmpeg": {
+    "id": 2877,
+    "files": [
+      "static/chunks/877.cbef80cf238399e3.js"
+    ]
+  },
+  "lib\\processors\\shared.ts -> @ffmpeg/util": {
+    "id": 3847,
+    "files": [
+      "static/chunks/847.c763abd4a0edc271.js"
+    ]
+  },
+  "lib\\processors\\video-to-mp3.ts -> @ffmpeg/ffmpeg": {
+    "id": 2877,
+    "files": [
+      "static/chunks/877.cbef80cf238399e3.js"
+    ]
+  },
+  "lib\\processors\\video-to-mp3.ts -> @ffmpeg/util": {
+    "id": 3847,
+    "files": [
+      "static/chunks/847.c763abd4a0edc271.js"
+    ]
+  }
+}
